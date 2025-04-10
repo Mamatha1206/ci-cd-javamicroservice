@@ -18,7 +18,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Checkout the repository
-                git 'https://github.com/Mamatha1206/ci-cd-javamicroservice.git'
+                git (url:'https://github.com/Mamatha1206/ci-cd-javamicroservice.git',branch:'main')
             }
         }
 
