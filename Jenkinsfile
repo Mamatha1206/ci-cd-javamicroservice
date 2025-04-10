@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         // Define environment variables if needed
-        DOCKER_IMAGE = 'mamatha0124/java-microservice1:latest'
+        DOCKER_IMAGE = 'mamatha0124/java-microservice1'
         DOCKER_REGISTRY = 'docker.io' // You can change this if you use another registry
         KUBERNETES_NAMESPACE = 'default'
         DEPLOYMENT_NAME = 'java-app'
@@ -38,7 +38,7 @@ pipeline {
                     sh 'docker build -t ${DOCKER_IMAGE} .'
 
                     // Log in to Docker Hub
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS_ID', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh 'echo $DOCKER_PASS | docker login --username $DOCKER_USER --password-stdin'
                     }
 
