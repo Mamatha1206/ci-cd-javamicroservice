@@ -2,33 +2,67 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "mamatha0124/your-app"
+        IMAGE_NAME = "mamatha0124/java-microservice1"
+        SONARQUBE_ENV = 'SonarQubeServer' 
+    }
+
+    tools {
+        maven 'Maven 3.8.6' 
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                checkout scm
+                git branch: 'main', url: 'https://github.com/Mamatha1206/sonarqube.git'
             }
         }
 
-        stage('Build and Test') {
+        stage('Build') {
             steps {
-                sh 'mvn clean install'
+                sh 'mvn clean package -DskipTests=false'
             }
         }
 
-        stage('Docker Build and Push') {
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    withCredentials([string(credentialsId: 'SonarQubeServer', variable: 'SONAR_TOKEN')]) {
+                        sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Docker Build') {
             when {
                 branch 'develop'
             }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS_ID', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
-                    sh """
-                        docker build -t $DOCKER_IMAGE:${env.BUILD_NUMBER} .
-                        echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
-                        docker push $DOCKER_IMAGE:${env.BUILD_NUMBER}
-                    """
+                sh "docker build -t ${IMAGE_NAME} ."
+            }
+        }
+
+        stage('Push to DockerHub') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                withDockerRegistry([credentialsId: 'DOCKER_CREDENTIALS_ID', url: '']) {
+                    sh "docker push ${IMAGE_NAME}"
                 }
             }
         }
@@ -38,18 +72,11 @@ pipeline {
                 branch 'develop'
             }
             steps {
-                sh """
-                    sed -i 's|mamatha0124/your-app:.*|mamatha0124/your-app:${env.BUILD_NUMBER}|' k8s/deployment.yaml
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl apply -f k8s/service.yaml
-                """
+                sh '''
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+                '''
             }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
         }
     }
 }
