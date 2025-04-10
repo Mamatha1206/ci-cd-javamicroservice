@@ -2,71 +2,78 @@ pipeline {
     agent any
 
     tools {
-        // Specify the Maven tool installed in Jenkins
-        maven 'Maven 3.8.6' // This should match the name you provided in the Global Tool Configuration
+        maven 'Maven 3.8.6'
+        jdk 'JDK17'
     }
 
     environment {
-        // Define environment variables if needed
-        DOCKER_IMAGE = 'mamatha0124/java-microservice1:latest'
-        DOCKER_REGISTRY = 'docker.io' // You can change this if you use another registry
-        KUBERNETES_NAMESPACE = 'default'
-        DEPLOYMENT_NAME = 'java-app'
+        IMAGE_NAME = "mamatha0124/java-microservice1"
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Checkout the repository
-                git (url: 'https://github.com/Mamatha1206/ci-cd-javamicroservice.git',branch:'main')
+                git branch: 'main', url: 'https://github.com/Mamatha1206/ci-cd-javamicroservice.git'
             }
         }
 
-        stage('Build') {
+        stage('Build and Test') {
             steps {
-                script {
-                    // Run Maven build
-                    sh 'mvn clean install'
+                sh 'mvn clean verify'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQubeServer') {
+                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                        mvn sonar:sonar \
+                            -Dsonar.projectKey=anushree-java-microservice \
+                            -Dsonar.projectName="Mamatha Java Microservice" \
+                            -Dsonar.projectVersion=1.0 \
+                            -Dsonar.sources=src/main/java \
+                            -Dsonar.tests=src/test/java \
+                            -Dsonar.login=$SONAR_TOKEN
+                        '''
+                    }
+                }
+            }
+        }
+
+
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
 
         stage('Docker Build & Push') {
+            when {
+                branch 'develop'
+            }
             steps {
-                script {
-                    // Build Docker image
-                    sh 'docker build -t ${DOCKER_IMAGE} .'
-
-                    // Log in to Docker Hub
-                    withCredentials([usernamePassword(credentialsId: 'DOCKER_CREDENTIALS_ID', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh 'echo $DOCKER_PASS | docker login --username $DOCKER_USER --password-stdin'
-                    }
-
-                    // Push the Docker image to Docker Hub
-                    sh 'docker push ${DOCKER_IMAGE}'
+                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                withDockerRegistry([credentialsId: 'DOCKER_CREEDNTIALS_ID', url: '']) {
+                    sh 'docker push ${IMAGE_NAME}:${IMAGE_TAG}'
                 }
             }
         }
 
-        stage('Kubernetes Deployment') {
-            steps {
-                script {
-                    // Deploy to Kubernetes
-                    sh 'kubectl set image deployment/${DEPLOYMENT_NAME} java-app=${DOCKER_IMAGE} --namespace=${KUBERNETES_NAMESPACE}'
-                    sh 'kubectl rollout status deployment/${DEPLOYMENT_NAME} --namespace=${KUBERNETES_NAMESPACE}'
-                }
+        stage('Deploy to Kubernetes') {
+            when {
+                branch 'develop'
             }
-        }
-
-    
-    }
-
-    post {
-        success {
-            echo 'Build and deployment successful!'
-        }
-        failure {
-            echo 'Build or deployment failed!'
+            steps {
+                sh '''
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+                '''
+            }
         }
     }
 }
