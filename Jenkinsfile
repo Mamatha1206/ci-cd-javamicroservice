@@ -58,16 +58,6 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    // Run SonarQube analysis
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=java-microservice -Dsonar.host.url=http://<your-sonarqube-url>:9000 -Dsonar.login=<your-sonar-token>'
-                }
-            }
-        }
-    }
-
     post {
         success {
             echo 'Build and deployment successful!'
