@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: your-app
+  name: java-app
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
-      app: your-app
+      app: java-app
   template:
     metadata:
       labels:
-        app: your-app
+        app: java-app
     spec:
       containers:
-      - name: your-app-container
-        image: mamatha0124/your-app:latest
-        ports:
-        - containerPort: 8888
+        - name: java-app
+          image: mamatha0124/java-microservice1:latest
+          ports:
+            - containerPort: 8080
