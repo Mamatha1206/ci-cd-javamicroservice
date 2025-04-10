@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         // Define environment variables if needed
-        DOCKER_IMAGE = 'mamatha0124/java-microservice1'
+        DOCKER_IMAGE = 'mamatha0124/java-microservice1:latest'
         DOCKER_REGISTRY = 'docker.io' // You can change this if you use another registry
         KUBERNETES_NAMESPACE = 'default'
         DEPLOYMENT_NAME = 'java-app'
@@ -18,7 +18,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Checkout the repository
-                git (url:'https://github.com/Mamatha1206/ci-cd-javamicroservice.git',branch:'main')
+                git (url: 'https://github.com/Mamatha1206/ci-cd-javamicroservice.git',branch:'main')
             }
         }
 
@@ -57,6 +57,9 @@ pipeline {
                 }
             }
         }
+
+    
+    }
 
     post {
         success {
