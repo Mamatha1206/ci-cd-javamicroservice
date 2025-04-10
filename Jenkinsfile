@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', url: 'https://github.com/Mamatha1206/sonarqube.git'
+                git branch: 'main', url: 'https://github.com/Mamatha1206/ci-cd-javamicroservice.git'
             }
         }
 
